@@ -1,0 +1,10 @@
+<LanguageData>
+	<XmlPatchHelper>Xml Patch Helper</XmlPatchHelper>
+	<FetchingXmlDefs>Fetching Xml</FetchingXmlDefs>
+	<XmlFormatting>Xml Color Scheme</XmlFormatting>
+	<RunXPath>Run XPath Search</RunXPath>
+	<XPathProfile>Profile XPath</XPathProfile>
+	<RegenerateXmlDoc>Regenerate XmlDoc</RegenerateXmlDoc>
+	<DownloadMatches>Download Xml</DownloadMatches>
+	<PatchOperationType>Patch Operation Type:</PatchOperationType>
+</LanguageData>

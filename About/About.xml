@@ -1,0 +1,23 @@
+<ModMetaData>
+	<name>Xml Patch Helper</name>
+	<author>Smash Phil</author>
+	<packageId>smashphil.xmlpatchhelper</packageId>
+	<supportedVersions>
+		<li>1.3</li>
+	</supportedVersions>
+	<loadAfter>
+		<li>brrainz.harmony</li>
+	</loadAfter>
+	<modDependencies>
+		<li>
+			<packageId>brrainz.harmony</packageId>
+			<displayName>Harmony</displayName>
+			<steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+			<downloadUrl>https://github.com/pardeike/HarmonyRimWorld/releases/latest</downloadUrl>
+		</li>
+	</modDependencies>
+	<description>&lt;b&gt;&lt;color=orange&gt;Xml Patch Helper&lt;/color&gt;&lt;/b&gt;
+
+This tool allows you to validate or generate XPath based PatchOperations in-game.
+</description>
+</ModMetaData>
