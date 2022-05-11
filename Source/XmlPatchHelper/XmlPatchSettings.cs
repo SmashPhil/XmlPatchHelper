@@ -16,11 +16,11 @@ namespace XmlPatchHelper
 		public static Color White => new Color(1, 1, 1, 1);
 		public static Color Comment => new Color(0, 0.588f, 0.196f, 1);
 
-		public Color nodeColor = new Color(0.235f, 0.745f, 0.941f, 1);
-		public Color attributeNameColor = new Color(1, 0.58f, 0.451f, 1);
-		public Color attributeValueColor = new Color(0.89f, 0.408f, 0.827f, 1);
-		public Color textColor = new Color(1, 1, 1, 1);
-		public Color commentColor = new Color(0, 0.588f, 0.196f, 1);
+		public Color nodeColor = LightBlue;
+		public Color attributeNameColor = Salmon;
+		public Color attributeValueColor = Pink;
+		public Color textColor = White;
+		public Color commentColor = Comment;
 
 		public override void ExposeData()
 		{
@@ -47,13 +47,14 @@ namespace XmlPatchHelper
 			highlightedSection = XmlSection.None;
 		}
 
-		public string Open(Color color) => "<<i></i>node  ".Colorize(color);
-		public string Name(Color color) => " Name".Colorize(color);
+		public string Open(Color color) => $"<<i></i>{"XmlNode".Translate()}  ".Colorize(color);
+		public string Name(Color color) => $" {"XmlAttributeName".Translate()}".Colorize(color);
 		public string Equals(Color color) => " = ".Colorize(color);
-		public string Value(Color color) => "\"Value\"".Colorize(color);
-		public string InnerText(Color color) => "InnerText".Colorize(color);
+		public string Value(Color color) => $"\"{"XmlAttributeValue".Translate()}\"".Colorize(color);
+		public string InnerText(Color color) => "XmlInnerText".Translate().Colorize(color);
 		public string CloseOpen(Color color) => ">".Colorize(color);
-		public string Close(Color color) => "<<i></i>/node>  ".Colorize(color);
+		public string Close(Color color) => $"<<i></i>/{"XmlNode".Translate()}>  ".Colorize(color);
+		public string Comment(Color color) => $"<<i></i>!-- {"XmlComment".Translate()} --<i></i>>  ".Colorize(color);
 
 		public override void DoSettingsWindowContents(Rect inRect)
 		{
@@ -65,24 +66,28 @@ namespace XmlPatchHelper
 			Color attributeNameColor = settings.attributeNameColor;
 			Color attributeValueColor = settings.attributeValueColor;
 			Color textColor = settings.textColor;
-
-			Rect colorRect = new Rect(inRect);
-			colorRect.height = 48;
+			Color commentColor = settings.commentColor;
 
 			highlightedAtAll = false;
 
-			Widgets.Label(colorRect, XmlText.Comment("XmlFormatting".Translate()));
-			colorRect.y += colorRect.height;
+			float textHeight = Text.CalcHeight("Test", inRect.width);
+
+			Rect colorRect = new Rect(inRect);
+			colorRect.height = textHeight * 2 + 2;
 			float totalWidth = Text.CalcSize(Open(Color.white) + Name(Color.white) + Equals(Color.white) + Value(Color.white) + CloseOpen(Color.white) + InnerText(Color.white) + Close(Color.white)).x;
-			colorRect.width = totalWidth + 5;
+			colorRect.width = totalWidth + 10;
 			Widgets.DrawMenuSection(colorRect);
 			colorRect.width = inRect.width;
-			colorRect.height = 24;
-			colorRect.x += 2;
+			colorRect.height = textHeight;
+			colorRect.y += 1;
+			colorRect.x += 5;
+			Rect commentRect = colorRect;
+			colorRect.y += colorRect.height;
 
+			DrawColoredText(ref commentRect, Comment, commentColor, settings.commentColor, XmlSection.Comment, (Color color) => settings.commentColor = color);
 			DrawColoredText(ref colorRect, Open, nodeColor, settings.nodeColor, XmlSection.Node, (Color color) => settings.nodeColor = color);
 			DrawColoredText(ref colorRect, Name, attributeNameColor, settings.attributeNameColor, XmlSection.AttributeName, (Color color) => settings.attributeNameColor = color);
-			DrawColoredText(ref colorRect, Equals, textColor, settings.nodeColor, XmlSection.InnerText, (Color color) => settings.nodeColor = color, false);
+			DrawColoredText(ref colorRect, Equals, textColor, settings.textColor, XmlSection.InnerText, null, false);
 			DrawColoredText(ref colorRect, Value, attributeValueColor, settings.attributeValueColor, XmlSection.AttributeValue, (Color color) => settings.attributeValueColor = color);
 			DrawColoredText(ref colorRect, CloseOpen, nodeColor, settings.nodeColor, XmlSection.Node, (Color color) => settings.nodeColor = color);
 			DrawColoredText(ref colorRect, InnerText, textColor, settings.textColor, XmlSection.InnerText, (Color color) => settings.textColor = color);
@@ -92,10 +97,6 @@ namespace XmlPatchHelper
 			{
 				highlightedSection = XmlSection.None;
 			}
-			settings.nodeColor = nodeColor;
-			settings.attributeNameColor = attributeNameColor;
-			settings.attributeValueColor = attributeValueColor;
-			settings.textColor = textColor;
 		}
 
 		private static void DrawColoredText(ref Rect rect, Func<Color, string> text, Color color, Color originalColor, XmlSection section, Action<Color> setColor, bool editable = true)
@@ -156,7 +157,8 @@ namespace XmlPatchHelper
 			Node,
 			AttributeName,
 			AttributeValue,
-			InnerText
+			InnerText,
+			Comment
 		}
 	}
 }

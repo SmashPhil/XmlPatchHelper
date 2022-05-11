@@ -14,6 +14,8 @@ namespace XmlPatchHelper
 		public static bool draggingHue;
 		public static bool draggingDisplacement;
 
+		public static string[] RichTextBrackets = { "color", "i", "b", "size", "material", "quad" };
+
 		public static Texture2D ColorChart = new Texture2D(255, 255);
 		public static Texture2D HueChart = new Texture2D(1, 255);
 
@@ -76,7 +78,7 @@ namespace XmlPatchHelper
 					attributeList.Add((attribute.Name, attribute.Value));
 				}
 			}
-			return OpenBracket(node, tabs, attributeList.ToArray());
+			return OpenSelfClosingBracket(node, tabs, attributeList.ToArray());
 		}
 
 		public static string OpenBracket(string node, int tabs = 0, params (string name, string value)[] attribute)
@@ -86,7 +88,7 @@ namespace XmlPatchHelper
 			{
 				prepend += "\t";
 			}
-			if (node.ToUpperInvariant() == "COLOR")
+			if (RichTextBrackets.Contains(node.ToLowerInvariant()))
 			{
 				node = $"<i></i>{node}";
 			}
@@ -109,7 +111,7 @@ namespace XmlPatchHelper
 			{
 				prepend += "\t";
 			}
-			if (node.ToUpperInvariant() == "COLOR")
+			if (RichTextBrackets.Contains(node.ToLowerInvariant()))
 			{
 				node = $"<i></i>{node}";
 			}
@@ -125,14 +127,18 @@ namespace XmlPatchHelper
 			return prepend + bracket.Colorize(XmlPatchMod.settings.nodeColor);
 		}
 
-		public static string CloseBracket(string name, int tabs = 0)
+		public static string CloseBracket(string node, int tabs = 0)
 		{
 			string prepend = string.Empty;
 			for (int i = 0; i < tabs; i++)
 			{
 				prepend += "\t";
 			}
-			return prepend + $"<<i></i>/{name}>".Colorize(XmlPatchMod.settings.nodeColor);
+			if (RichTextBrackets.Contains(node.ToLowerInvariant()))
+			{
+				node = $"<i></i>{node}";
+			}
+			return prepend + $"<<i></i>/{node}>".Colorize(XmlPatchMod.settings.nodeColor);
 		}
 
 		public static string AttributeName(string name)

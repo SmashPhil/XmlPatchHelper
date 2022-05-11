@@ -1,10 +1,36 @@
 <LanguageData>
+	<XmlComment>Xml Color Scheme</XmlComment>
+	<XmlNode>Node</XmlNode>
+	<XmlAttributeName>Name</XmlAttributeName>
+	<XmlAttributeValue>Value</XmlAttributeValue>
+	<XmlInnerText>InnerText</XmlInnerText>
+	
 	<XmlPatchHelper>Xml Patch Helper</XmlPatchHelper>
 	<FetchingXmlDefs>Fetching Xml</FetchingXmlDefs>
-	<XmlFormatting>Xml Color Scheme</XmlFormatting>
 	<RunXPath>Run XPath Search</RunXPath>
 	<XPathProfile>Profile XPath</XPathProfile>
+	<XPathProfiling>Profiling XPath</XPathProfiling>
 	<RegenerateXmlDoc>Regenerate XmlDoc</RegenerateXmlDoc>
-	<DownloadMatches>Download Xml</DownloadMatches>
+	<DownloadMatches>Download Results</DownloadMatches>
+	<RunPatchOperation>Run PatchOperation</RunPatchOperation>
 	<PatchOperationType>Patch Operation Type:</PatchOperationType>
+	<XmlPreview>Preview</XmlPreview>
+	<XmlAddAttribute>Add Attribute</XmlAddAttribute>
+	
+	<InvalidXmlException>Invalid xml. Exception caught</InvalidXmlException>
+	<InvalidXPathException>Invalid xpath. Exception caught</InvalidXPathException>
+	<SummaryStarterSuggestion>/Defs/ is much slower than Defs/ since it starts by selecting the entire document before selecting the document element (Defs), which is unnecessary.{0}Stop using it.</SummaryStarterSuggestion>
+	<SummaryExecutionTime>Execution time: {0} ticks ({1}ms)</SummaryExecutionTime>
+	<SummaryMatchCount>Summary: Found {0} results.</SummaryMatchCount>
+	<SummaryMatchCountWithDisclaimer>Summary: Found {0} results. (Only showing first 5 matches)</SummaryMatchCountWithDisclaimer>
+	<CloseSearchSuggestion>Your search was close. Did you mean one of the following?</CloseSearchSuggestion>
+	
+	<ProfileSampleSize>Profiling Sample Size </ProfileSampleSize>
+	<ProfileMatchHeader>Matching {0}</ProfileMatchHeader>
+	<ProfileAttemptingSampleSize>Profiling with {0} iterations.</ProfileAttemptingSampleSize>
+	<ProfileExitOperationTooLong>Exiting operation after {0} iterations. Average is too large for sample size and may cause the application to hang.</ProfileExitOperationTooLong>
+	
+	<ProfileMatchResults>Matched Nodes: {0}.</ProfileMatchResults>
+	<ProfileAverageResults>Average: {0} ticks ({1}ms)</ProfileAverageResults>
+	<ProfileTickDisclaimer>Disclaimer: This is measuring timer ticks (not RimWorld ticks)</ProfileTickDisclaimer>
 </LanguageData>

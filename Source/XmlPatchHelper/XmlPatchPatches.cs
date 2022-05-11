@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Linq;
 using System.Xml;
 using Verse;
+using RimWorld;
 using UnityEngine;
 using HarmonyLib;
 
@@ -33,6 +34,19 @@ namespace XmlPatchHelper
 			HarmonyInstance.Patch(AccessTools.Method(typeof(OptionListingUtility), nameof(OptionListingUtility.DrawOptionListing)),
 				prefix: new HarmonyMethod(typeof(XmlPatchPatches),
 				nameof(InsertXmlPatcherButton)));
+
+
+			HarmonyInstance.Patch(AccessTools.Method(typeof(Printer_Plane), nameof(Printer_Plane.PrintPlane)),
+				prefix: new HarmonyMethod(typeof(XmlPatchPatches),
+				nameof(Test)));
+		}
+
+		private static void Test(SectionLayer layer, Vector3 center, Vector2 size, Material mat, float rot = 0f, bool flipUv = false, Vector2[] uvs = null, Color32[] colors = null, float topVerticesAltitudeBias = 0.01f, float uvzPayload = 0f)
+		{
+			if (mat.mainTexture.name == "MF_PalmTree1")
+			{
+				Log.Message($"Colors: {colors[0]}");
+			}
 		}
 
 		public static void InsertXmlPatcherButton(Rect rect, ref List<ListableOption> optList)

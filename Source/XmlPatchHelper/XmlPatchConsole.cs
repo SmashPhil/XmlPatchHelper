@@ -10,14 +10,20 @@ using System.Diagnostics;
 using System.IO;
 using UnityEngine;
 using Verse;
+using Verse.Sound;
+using RimWorld;
 using HarmonyLib;
 
 namespace XmlPatchHelper
 {
     public class XmlPatchConsole : Window
     {
+		private const int MaxInnerTextLength = 25;
+
 		private const string XPathFieldName = "xpath";
 		private static Vector2 xmlScrollPosition;
+		private static Vector2 fieldsScrollPosition;
+		private static Vector2 outputScrollPosition;
 
 		private static float offset = 10;
 
@@ -26,6 +32,7 @@ namespace XmlPatchHelper
 		private static Stopwatch stopwatch;
 
 		private static StringBuilder summary;
+		private static Dictionary<FieldInfo, StringBuilder> containerSummaries;
 
 		private static Dictionary<Type, HashSet<string>> excludedFields = new Dictionary<Type, HashSet<string>>();
 
@@ -35,10 +42,25 @@ namespace XmlPatchHelper
 		private static Type patchType;
 		private static PatchOperation patchOperation;
 
+		private static int sampleSize = 1000;
+		private static string sampleBuffer = sampleSize.ToStringSafe();
+
 		private static string xpath;
 		private static int nodesPerMatch;
 		private static int depth;
 		private static int tabs;
+
+		private static float fieldScrollableHeight;
+
+		private static SimpleCurve cutoutSampleSizeCurve = new SimpleCurve(new List<CurvePoint>()
+		{
+			new CurvePoint(1, 10000),
+			new CurvePoint(10, 5000),
+			new CurvePoint(100, 500),
+			new CurvePoint(1000, 100),
+			new CurvePoint(2000, 10),
+			new CurvePoint(3000, 1)
+		});
 
 		public XmlPatchConsole()
 		{
@@ -47,14 +69,20 @@ namespace XmlPatchHelper
 			closeOnAccept = false;
 			stopwatch = new Stopwatch();
 			summary = new StringBuilder();
+			containerSummaries = new Dictionary<FieldInfo, StringBuilder>();
 
 			closeOnClickedOutside = true;
 			doCloseX = true;
 		}
 
-		public override Vector2 InitialSize => new Vector2(UI.screenWidth / 1.25f, UI.screenHeight / 1.25f);
+		public override Vector2 InitialSize => new Vector2(UI.screenWidth / 1.05f, UI.screenHeight / 1.2f);
 
 		public bool GeneratingXmlDoc { get; private set; } = false;
+
+		public static void ValidateFieldScrollableHeight()
+		{
+			
+		}
 
 		public static void ExcludeField(Type declaringType, string name, bool logNotFound = true)
 		{
@@ -93,17 +121,16 @@ namespace XmlPatchHelper
 			var font = Text.Font;
 			Text.Font = GameFont.Small;
 
-			Rect leftWindow = new Rect(0, 0, inRect.width / 2.25f - offset, inRect.height);
+			Rect leftWindow = new Rect(0, 0, inRect.width / 1.75f - offset, inRect.height);
 			DoXmlArea(leftWindow);
-			Rect rightWindow = new Rect(leftWindow.width + offset * 2, leftWindow.y, inRect.width - leftWindow.width - offset * 2, inRect.height);
-			DoPatchArea(rightWindow);
-
+			Rect topRightWindow = new Rect(leftWindow.width + offset * 2, leftWindow.y + Dialog_ColorPicker.ButtonHeight + 2, inRect.width - leftWindow.width - offset * 2, inRect.height);
+			DoFieldsArea(topRightWindow);
 			Text.Font = font;
 		}
 
 		private void DoXmlArea(Rect rect)
 		{
-			Rect buttonRect = new Rect(0, 0, rect.width / 4 - 1, Dialog_ColorPicker.ButtonHeight);
+			Rect buttonRect = new Rect(0, 0, rect.width / 5 - 1, Dialog_ColorPicker.ButtonHeight);
 			if (Widgets.ButtonText(buttonRect, "RunXPath".Translate()))
 			{
 				UpdateSelect();
@@ -111,7 +138,10 @@ namespace XmlPatchHelper
 			buttonRect.x += buttonRect.width + 1;
 			if (Widgets.ButtonText(buttonRect, "XPathProfile".Translate()))
 			{
-				ProfileSelect(10000);
+				LongEventHandler.QueueLongEvent(delegate ()
+				{
+					ProfileSelect(sampleSize, cutoutSampleSizeCurve);
+				}, "XPathProfiling", true, null);
 			}
 			buttonRect.x += buttonRect.width + 1;
 			if (Widgets.ButtonText(buttonRect, "RegenerateXmlDoc".Translate()))
@@ -127,14 +157,12 @@ namespace XmlPatchHelper
 				{
 					XmlNodeList nodeList = document.SelectNodes(xpath);
 					XmlDocument matchDoc = new XmlDocument();
-					if (nodeList.Count > 1)
-					{
-						matchDoc.AppendChild(matchDoc.CreateElement("XPathMatches"));
-					}
+					matchDoc.AppendChild(matchDoc.CreateElement("XPathMatches"));
 					foreach (XmlNode node in nodeList)
 					{
 						matchDoc.DocumentElement.AppendChild(matchDoc.ImportNode(node, true));
 					}
+
 					matchDoc.Save(filePath);
 					Application.OpenURL(filePath);
 				}
@@ -143,27 +171,54 @@ namespace XmlPatchHelper
 					Log.Error($"Unable to download XmlDocument to {filePath} Exception = {ex}");
 				}
 			}
+			buttonRect.x += buttonRect.width + 1;
+			if (Widgets.ButtonText(buttonRect, "RunPatchOperation".Translate()))
+			{
+				try
+				{
+					document.SelectNodes(xpath);
+					ShowPatchResults();
+				}
+				catch (XPathException)
+				{
+					Messages.Message("InvalidXPathException".Translate(), MessageTypeDefOf.RejectInput);
+				}
+				catch (Exception ex)
+				{
+					Log.Error($"Exception thrown while simulating xpath patch operation. Ex = {ex}");
+				}
+			}
 			rect.y = buttonRect.height + 2;
 			rect.height -= buttonRect.height + 2;
 			Widgets.DrawMenuSection(rect);
 			rect = rect.ContractedBy(5);
-			Widgets.LabelScrollable(rect, summary.ToString(), ref xmlScrollPosition);
+			TextAreaScrollable(rect, summary.ToString(), ref xmlScrollPosition);
+			float sampleBoxSize = rect.width / 2.5f;
+			Rect sampleBoxRect = new Rect(rect)
+			{
+				x = buttonRect.x + buttonRect.width + 1,
+				y = buttonRect.y,
+				width = sampleBoxSize,
+				height = 24
+			};
+			Widgets.TextFieldNumericLabeled(sampleBoxRect, "ProfileSampleSize".Translate(), ref sampleSize, ref sampleBuffer, max: 3000);
 		}
 
-		private void DoPatchArea(Rect rect)
+		private void DoFieldsArea(Rect rect)
 		{
 			Rect fieldRect = rect;
-			fieldRect.y = Dialog_ColorPicker.ButtonHeight + 2;
-			fieldRect.height = 24;
+			float dropdownHeight = 24;
+			fieldRect.height = dropdownHeight;
 			Widgets.Label(fieldRect, "PatchOperationType".Translate());
 			fieldRect.x += Text.CalcSize("PatchOperationType".Translate()).x + 5;
 			fieldRect.width = rect.width / 2;
 			Widgets.Dropdown(fieldRect, patchType, (Type type) => type, PatchTypeSelection_GenerateMenu, patchType.Name);
-			fieldRect.x = rect.x;
-			fieldRect.y += 26;
-			fieldRect.width = rect.width;
+			fieldRect = rect;
+			fieldRect.y += dropdownHeight + 2;
+
 			if (patchType != null && patchOperation != null)
 			{
+				//Widgets.BeginScrollView(fieldRect, ref fieldsScrollPosition, fieldRect);
 				foreach (FieldInfo fieldInfo in patchTypes[patchType])
 				{
 					InputField(ref fieldRect, fieldInfo.Name, fieldInfo, (object value) =>
@@ -173,10 +228,21 @@ namespace XmlPatchHelper
 							xpath = (string)value;
 							UpdateSelect();
 						}
+						if (value is XmlContainer container)
+						{
+							containerSummaries[fieldInfo].Clear();
+							AppendXmlRecursive(container.node, false, containerSummaries[fieldInfo]);
+						}
 					});
 					fieldRect.y += fieldRect.height + 5;
 				}
+				//Widgets.EndScrollView();
 			}
+		}
+
+		private void ShowPatchResults()
+		{
+			//XmlDocument compareDoc = 
 		}
 
 		/// <summary>
@@ -187,18 +253,23 @@ namespace XmlPatchHelper
 			summary.Clear();
 			try
 			{
-				XmlNodeList nodeList; //Create object outside timer
-
 				stopwatch.Restart();
-				nodeList = document.SelectNodes(xpath);
+				XmlNodeList nodeList = document.SelectNodes(xpath);
 				stopwatch.Stop();
 
-				BuildXmlSummary(nodeList);
+				BuildXmlSummary(nodeList, summary);
 				
-				string disclaimer = nodeList.Count >= 5 ? "(Only showing first 5 matches)" : string.Empty;
 				summary.PrependLine();
-				summary.PrependLine(XmlText.Comment($"Execution time: {string.Format("{0:0.##}", stopwatch.ElapsedTicks)} ticks ({string.Format("{0:0.##}", stopwatch.ElapsedMilliseconds)}ms)"));
-				summary.PrependLine(XmlText.Comment($"Summary: Found {nodeList.Count} results. {disclaimer}"));
+
+				if (xpath.StartsWith("/Defs"))
+				{
+					summary.PrependLine("SummaryStarterSuggestion".Translate(Environment.NewLine).Colorize(Color.yellow));
+					summary.PrependLine();
+				}
+
+				summary.PrependLine(XmlText.Comment("SummaryExecutionTime".Translate(string.Format("{0:0.##}", stopwatch.ElapsedTicks), string.Format("{0:0.##}", stopwatch.ElapsedMilliseconds))));
+				string summaryText = nodeList.Count >= 5 ? "SummaryMatchCountWithDisclaimer".Translate(nodeList.Count) : "SummaryMatchCount".Translate(nodeList.Count);
+				summary.PrependLine(XmlText.Comment(summaryText));
 
 				if (nodeList.Count == 0)
 				{
@@ -217,7 +288,7 @@ namespace XmlPatchHelper
 							if (correctionAttempt.Count > 0)
 							{
 								summary.AppendLine();
-								summary.AppendLine("Your search was close. Did you mean one of the following?");
+								summary.AppendLine("CloseSearchSuggestion".Translate());
 								foreach (XmlNode node in correctionAttempt)
 								{
 									lastSelectPieceMeal[0] = node.Name; //Substitute wildcard match
@@ -236,66 +307,64 @@ namespace XmlPatchHelper
 			catch (XPathException)
 			{
 				summary.Clear();
-				summary.Append("Invalid xpath. Exception caught".Colorize(ColorLibrary.LogError));
+				summary.Append("InvalidXPathException".Translate().Colorize(ColorLibrary.LogError));
 			}
 			summary.AppendLine();
 		}
 
-		private double ProfileSelect(int sample, int exitPointIfSlow = 100, double exitIfAboveAverageTicks = 100000)
+		private double ProfileSelect(int sample, SimpleCurve sampleSizeForAverage)
 		{
 			summary.Clear();
 			try
 			{
-				if (sample > 0)
+				summary.AppendLine("ProfileMatchHeader".Translate(xpath));
+				summary.AppendLine("ProfileAttemptingSampleSize".Translate(sample));
+				List<long> results = new List<long>();
+				List<long> ms = new List<long>();
+				XmlNodeList nodeList = null;
+
+				for (int i = 0; i < sample; i++)
 				{
-					summary.AppendLine($"Matching: {xpath}");
-					summary.AppendLine($"Sample Size: {sample}");
-					List<long> results = new List<long>();
-					List<long> ms = new List<long>();
-					XmlNodeList nodeList = null;
-					for (int i = 0; i < sample; i++)
+					XmlDocument profileDocument = new XmlDocument();
+					profileDocument.LoadXml(document.OuterXml);
+					stopwatch.Restart();
+					nodeList = profileDocument.SelectNodes(xpath);
+					stopwatch.Stop();
+					results.Add(stopwatch.ElapsedTicks);
+					ms.Add(stopwatch.ElapsedMilliseconds);
+					//Only check for exit point if given enough sample points to determine if operation is too slow
+					if (results.Average() >= cutoutSampleSizeCurve.Evaluate(i))
 					{
-						stopwatch.Restart();
-						nodeList = document.SelectNodes(xpath);
-						stopwatch.Stop();
-						results.Add(stopwatch.ElapsedTicks);
-						ms.Add(stopwatch.ElapsedMilliseconds);
-						//Only check for exit point if given enough sample points to determine if operation is too slow
-						if (i < exitPointIfSlow && i > exitPointIfSlow / 2)
-						{
-							if (results.Average() >= exitIfAboveAverageTicks)
-							{
-								summary.AppendLine($"Exited operation after {i} iterations. Operation will take take too long to calculate, which may cause the application to hang.");
-								break;
-							}
-						}
+						summary.AppendLine("ProfileExitOperationTooLong".Translate(i));
+						break;
 					}
-					File.WriteAllLines(Path.Combine(Application.persistentDataPath, "ResultsTicks.txt"), results.Select(r => r.ToString()));
-					Application.OpenURL(Path.Combine(Application.persistentDataPath, "ResultsTicks.txt"));
-					double average = results.Average();
-					double averageMS = ms.Average();
-					summary.AppendLine($"Matched {nodeList.Count} nodes");
-					summary.AppendLine($"Average: {string.Format("{0:0.##}", average)} ticks ({string.Format("{0:0.##}", averageMS)}ms)");
-					return average;
 				}
+				double average = results.Average();
+				double averageMS = ms.Average();
+				summary.AppendLine("ProfileMatchResults".Translate(nodeList.Count));
+				summary.AppendLine("ProfileAverageResults".Translate(string.Format("{0:0.##}", average), string.Format("{0:0.##}", averageMS)));
+				summary.AppendLine();
+				summary.AppendLine("ProfileTickDisclaimer".Translate());
+				return average;
 			}
 			catch (XPathException)
 			{
 				summary.Clear();
-				summary.Append("Invalid xpath. Exception caught".Colorize(ColorLibrary.LogError));
+				summary.Append("InvalidXPathException".Translate().Colorize(ColorLibrary.LogError));
 			}
 			return 0;
 		}
 
-		private void BuildXmlSummary(XmlNodeList nodeList)
+		private static void BuildXmlSummary(XmlNodeList nodeList, StringBuilder summary, int maxNodeCount = 50)
 		{
 			int i = 0;
+			bool truncate = nodeList.Count > 1 || (nodeList.Count == 1 && (nodeList[0].ChildNodes.Count > maxNodeCount || nodeList[0].Name == "#document"));
 			foreach (XmlNode node in nodeList)
 			{
 				depth = 0;
 				tabs = 0;
 				nodesPerMatch = 0;
-				AppendXmlRecursive(node);
+				AppendXmlRecursive(node, truncate, summary);
 				if (i >= 5)
 				{
 					break;
@@ -305,7 +374,7 @@ namespace XmlPatchHelper
 			}
 		}
 
-		private bool AppendXmlRecursive(XmlNode node, int depth = 5, int nodesPerMatch = 10)
+		public static bool AppendXmlRecursive(XmlNode node, bool truncateXml, StringBuilder summary, int depth = 5, int nodesPerMatch = 10)
 		{
 			XmlAttributeCollection attributes = node.Attributes;
 			if (node.IsEmpty())
@@ -322,7 +391,7 @@ namespace XmlPatchHelper
 			summary.Append(XmlText.OpenBracket(node.Name, tabs, attributes));
 			if (node.IsTextElement())
 			{
-				summary.Append(XmlText.Text(node.InnerText.TruncateString(25)));
+				summary.Append(XmlText.Text(node.InnerText.TruncateString(MaxInnerTextLength)));
 				summary.AppendLine(XmlText.CloseBracket(node.Name));
 				return true;
 			}
@@ -330,7 +399,7 @@ namespace XmlPatchHelper
 			{
 				summary.AppendLine();
 				tabs++;
-				if (XmlPatchConsole.depth > depth)
+				if (truncateXml && XmlPatchConsole.depth > depth)
 				{
 					summary.AppendLine(XmlText.Comment("...", tabs));
 					tabs--;
@@ -339,12 +408,12 @@ namespace XmlPatchHelper
 				XmlPatchConsole.depth++;
 				foreach (XmlNode childNode in node)
 				{
-					if (XmlPatchConsole.nodesPerMatch >= nodesPerMatch)
+					if (truncateXml && XmlPatchConsole.nodesPerMatch >= nodesPerMatch)
 					{
 						truncate = true;
 						break;
 					}
-					if (!AppendXmlRecursive(childNode))
+					if (!AppendXmlRecursive(childNode, truncateXml, summary))
 					{
 						break;
 					}
@@ -391,6 +460,20 @@ namespace XmlPatchHelper
 				}
 				patchType ??= patchTypes.FirstOrDefault().Key;
 				patchOperation ??= activeOperations.FirstOrDefault(po => po.GetType() == patchType);
+				foreach (FieldInfo fieldInfo in patchTypes[patchType])
+				{
+					if (fieldInfo.FieldType == typeof(XmlContainer))
+					{
+						containerSummaries[fieldInfo] = new StringBuilder();
+						if (fieldInfo.GetValue(patchOperation) is XmlContainer container)
+						{
+							if (!container?.node?.IsEmpty() ?? false)
+							{
+								AppendXmlRecursive(container.node, false, containerSummaries[fieldInfo]);
+							}
+						}
+					}
+				}
 				GeneratingXmlDoc = false;
 			}, "FetchingXmlDefs", true, (Exception ex) =>
 			{
@@ -478,25 +561,83 @@ namespace XmlPatchHelper
 			{
 				if (value == null)
 				{
-					value = new XmlContainer()
-					{
-						node = document.CreateElement("value")
-					};
+					value = new XmlContainer();
 				}
 				XmlContainer container = (XmlContainer)value;
 				inputRect.height = 24;
-				string leftBracket = XmlText.OpenBracket(label);
-				string rightBracket = XmlText.CloseBracket(label);
-				float lbrWidth = Text.CalcSize(leftBracket).x;
-				float rbrWidth = Text.CalcSize(rightBracket).x;
-				Widgets.LabelFit(inputRect, leftBracket);
-				inputRect.y += inputRect.height;
-				float boxHeight = Mathf.Max(24, Text.CalcHeight(container.node.InnerText, inputRect.width)); ;
-				inputRect.height = boxHeight;
-				container.node.InnerText = TextArea(inputRect, container.node.InnerText, true);
-				inputRect.y += boxHeight;
-				inputRect.height = 24;
-				Widgets.LabelFit(inputRect, rightBracket);
+
+				Rect buttonRect = inputRect;
+				string containerButtonText = "Edit".Translate();
+				buttonRect.width = Text.CalcSize(containerButtonText).x + 24;
+				if (Widgets.ButtonText(buttonRect, containerButtonText))
+				{
+					Find.WindowStack.Add(new Dialog_AddNode(container, delegate (string node, string text, List<(string name, string value)> attributes)
+					{
+						XmlDocument doc = new XmlDocument();
+
+						if (node.NullOrEmpty())
+						{
+							container.node = doc.CreateNode(XmlNodeType.Text, string.Empty, string.Empty);
+							container.node.InnerText = text;
+						}
+						else
+						{
+							XmlElement element = doc.CreateElement(node);
+							if (!attributes.NullOrEmpty())
+							{
+								foreach ((string name, string value) in attributes)
+								{
+									element.SetAttribute(name, value);
+								}
+							}
+							element.InnerText = text;
+							container.node = element;
+						}
+						onValueChange?.Invoke(value);
+					}));
+				}
+
+				inputRect.y += buttonRect.height + 2;
+
+				float summaryHeight = 0;
+				float summaryY = inputRect.y;
+				if (container.node.IsEmpty())
+				{
+					summaryHeight += inputRect.height;
+					TextArea(inputRect, XmlText.OpenSelfClosingBracket(label));
+				}
+				else if (container.node.IsTextOnly())
+				{
+					summaryHeight += inputRect.height;
+					string summary = containerSummaries[field].ToString().TrimEndNewlines();
+					TextArea(inputRect, $"{XmlText.OpenBracket(label)}{summary}{XmlText.CloseBracket(label)}");
+				}
+				else
+				{
+					string valueOpen = XmlText.OpenBracket(label);
+					string valueClose = XmlText.CloseBracket(label);
+
+					string summary = containerSummaries[field].ToString().TrimEndNewlines();
+
+					float originalX = inputRect.x;
+					float tabWidth = Text.CalcSize("\t").x;
+					summaryHeight += inputRect.height;
+					TextArea(inputRect, valueOpen);
+					inputRect.height = Text.CalcHeight(summary, inputRect.width);
+					inputRect.y += Text.CalcHeight(valueOpen, inputRect.width);
+					inputRect.x = rect.x + tabWidth;
+					summaryHeight += inputRect.height;
+					TextArea(inputRect, summary);
+					inputRect.height = 24;
+					inputRect.y += Text.CalcHeight(summary, inputRect.width);
+					inputRect.x = originalX;
+					summaryHeight += inputRect.height;
+					TextArea(inputRect, valueClose);
+
+					inputRect.height = summaryHeight;
+					inputRect.y = summaryY;
+				}
+
 				value = container;
 			}
 			else
@@ -519,6 +660,21 @@ namespace XmlPatchHelper
 					{
 						patchType = registeredType;
 						patchOperation = activeOperations.FirstOrDefault(po => po.GetType() == patchType);
+						containerSummaries = new Dictionary<FieldInfo, StringBuilder>();
+						foreach (FieldInfo fieldInfo in patchTypes[patchType])
+						{
+							if (fieldInfo.FieldType == typeof(XmlContainer))
+							{
+								containerSummaries[fieldInfo] = new StringBuilder();
+								if (fieldInfo.GetValue(patchOperation) is XmlContainer container)
+								{
+									if (!container?.node?.IsEmpty() ?? false)
+									{
+										AppendXmlRecursive(container.node, false, containerSummaries[fieldInfo]);
+									}
+								}
+							}
+						}
 					}),
 					payload = registeredType
 				};
@@ -543,33 +699,30 @@ namespace XmlPatchHelper
 			return text;
 		}
 
-		public static string TextAreaXmlRender(Rect rect, string text, bool background = false, Regex validator = null)
+		public static string TextField(Rect rect, string text, bool background = false, Regex validator = null, TextAnchor anchor = TextAnchor.UpperLeft)
 		{
-			string tmpTextForRendering = text;
-
-			
-			tmpTextForRendering = TextAreaXmlRender(rect, tmpTextForRendering, background, validator);
-
-			text = tmpTextForRendering;
-
+			var anchorOld = Text.Anchor;
+			if (background)
+			{
+				Widgets.DrawMenuSection(rect);
+				rect.x += 2;
+			}
+			Text.Anchor = anchor;
+			string input = GUI.TextField(rect, text, Text.CurFontStyle);
+			Text.Anchor = anchorOld;
+			if (validator == null || validator.IsMatch(input))
+			{
+				return input;
+			}
 			return text;
 		}
 
 		public static string TextAreaScrollable(Rect rect, string text, ref Vector2 scrollbarPosition)
 		{
-			Rect rect2 = new Rect(0f, 0f, rect.width - 16f, Mathf.Max(Text.CalcHeight(text, rect.width) + 10f, rect.height));
-			Widgets.BeginScrollView(rect, ref scrollbarPosition, rect2, true);
-			string result = TextArea(rect, text);
-			Widgets.EndScrollView();
-			return result;
-		}
-
-		public static string XmlAreaScrollable(Rect rect, XmlNode node, ref Vector2 scrollbarPosition)
-		{
-			string text = node.InnerText;
-			Rect rect2 = new Rect(0f, 0f, rect.width - 16f, Mathf.Max(Text.CalcHeight(text, rect.width) + 10f, rect.height));
-			Widgets.BeginScrollView(rect, ref scrollbarPosition, rect2, true);
-			string result = TextArea(rect, text);
+			float width = rect.width - 16; //scrollbar space
+			Rect rect2 = new Rect(0f, 0f, width, Mathf.Max(Text.CalcHeight(text, width) + 5, rect.height));
+			Widgets.BeginScrollView(rect, ref scrollbarPosition, rect2);
+			string result = TextArea(rect2, text);
 			Widgets.EndScrollView();
 			return result;
 		}

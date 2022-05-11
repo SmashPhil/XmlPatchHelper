@@ -273,6 +273,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Dialog_AddNode.cs" />
+    <Compile Include="Dialog_BeforeAfterPatch.cs" />
     <Compile Include="Dialog_ColorPicker.cs" />
     <Compile Include="ListableOption_WebLinkResized.cs" />
     <Compile Include="Utilities.cs" />
