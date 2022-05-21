@@ -16,6 +16,8 @@
 	<PatchOperationType>Patch Operation Type:</PatchOperationType>
 	<XmlPreview>Preview</XmlPreview>
 	<XmlAddAttribute>Add Attribute</XmlAddAttribute>
+	<PatchSuccess>Success: {0}</PatchSuccess>
+	<ExportPatchXml>Generate Patch</ExportPatchXml>
 	
 	<InvalidXmlException>Invalid xml. Exception caught</InvalidXmlException>
 	<InvalidXPathException>Invalid xpath. Exception caught</InvalidXPathException>

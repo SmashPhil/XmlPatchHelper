@@ -13,7 +13,6 @@ namespace XmlPatchHelper
 	{
 		//Node - InnerText - (AttributeName, AttributeValue)
 		private Action<string, string, List<(string name, string value)>> onAccept;
-		private bool textOnly;
 
 		private string node;
 		private string text;
@@ -29,14 +28,17 @@ namespace XmlPatchHelper
 		public Dialog_AddNode(XmlContainer container, Action<string, string, List<(string name, string value)>> onAccept, bool textOnly = false)
 		{
 			this.onAccept = onAccept;
-			this.textOnly = textOnly;
 			attributes = new List<(string name, string value)>();
 			attributesInvalid = new List<int>();
 			summary = new StringBuilder();
-			if (!container?.node?.IsEmpty() ?? false)
+			if (!container?.node?.FirstChild?.IsEmpty() ?? false)
 			{
-				node = container.node.Name;
-				text = container.node.InnerText;
+				node = container.node.FirstChild.Name;
+				if (node == "#text")
+				{
+					node = string.Empty;
+				}
+				text = container.node.FirstChild.InnerText;
 
 				if (container.node.Attributes != null)
 				{
@@ -50,7 +52,6 @@ namespace XmlPatchHelper
 
 			closeOnCancel = true;
 			closeOnAccept = false;
-			closeOnClickedOutside = false;
 			doCloseX = true;
 		}
 
@@ -59,7 +60,7 @@ namespace XmlPatchHelper
 		private bool ValidateXml()
 		{
 			XmlDocument doc = new XmlDocument();
-			doc.AppendChild(doc.CreateElement("Validation"));
+			doc.AppendChild(doc.CreateElement("value"));
 			try
 			{
 				try
@@ -119,7 +120,7 @@ namespace XmlPatchHelper
 					}
 				}
 			}
-			catch (Exception ex)
+			catch
 			{
 				nodeInvalid = true;
 				textInvalid = true;

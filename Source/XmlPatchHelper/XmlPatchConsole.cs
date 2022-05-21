@@ -23,7 +23,6 @@ namespace XmlPatchHelper
 		private const string XPathFieldName = "xpath";
 		private static Vector2 xmlScrollPosition;
 		private static Vector2 fieldsScrollPosition;
-		private static Vector2 outputScrollPosition;
 
 		private static float offset = 10;
 
@@ -36,16 +35,16 @@ namespace XmlPatchHelper
 
 		private static Dictionary<Type, HashSet<string>> excludedFields = new Dictionary<Type, HashSet<string>>();
 
-		private static Dictionary<Type, List<FieldInfo>> patchTypes = new Dictionary<Type, List<FieldInfo>>();
-		private static List<PatchOperation> activeOperations = new List<PatchOperation>();
+		public static Dictionary<Type, List<FieldInfo>> patchTypes = new Dictionary<Type, List<FieldInfo>>();
+		public static List<PatchOperation> activeOperations = new List<PatchOperation>();
 
-		private static Type patchType;
-		private static PatchOperation patchOperation;
+		public static Type patchType;
+		public static PatchOperation patchOperation;
 
-		private static int sampleSize = 1000;
-		private static string sampleBuffer = sampleSize.ToStringSafe();
+		public static int sampleSize = 1000;
+		public static string sampleBuffer = sampleSize.ToStringSafe();
 
-		private static string xpath;
+		public static string xpath;
 		private static int nodesPerMatch;
 		private static int depth;
 		private static int tabs;
@@ -78,6 +77,8 @@ namespace XmlPatchHelper
 		public override Vector2 InitialSize => new Vector2(UI.screenWidth / 1.05f, UI.screenHeight / 1.2f);
 
 		public bool GeneratingXmlDoc { get; private set; } = false;
+
+		public static XmlDocument CombinedXmlDoc => document;
 
 		public static void ValidateFieldScrollableHeight()
 		{
@@ -123,8 +124,8 @@ namespace XmlPatchHelper
 
 			Rect leftWindow = new Rect(0, 0, inRect.width / 1.75f - offset, inRect.height);
 			DoXmlArea(leftWindow);
-			Rect topRightWindow = new Rect(leftWindow.width + offset * 2, leftWindow.y + Dialog_ColorPicker.ButtonHeight + 2, inRect.width - leftWindow.width - offset * 2, inRect.height);
-			DoFieldsArea(topRightWindow);
+			Rect rightWindow = new Rect(leftWindow.width + offset * 2, leftWindow.y, inRect.width - leftWindow.width - offset * 2, leftWindow.height);
+			DoFieldsArea(rightWindow);
 			Text.Font = font;
 		}
 
@@ -193,15 +194,6 @@ namespace XmlPatchHelper
 			Widgets.DrawMenuSection(rect);
 			rect = rect.ContractedBy(5);
 			TextAreaScrollable(rect, summary.ToString(), ref xmlScrollPosition);
-			float sampleBoxSize = rect.width / 2.5f;
-			Rect sampleBoxRect = new Rect(rect)
-			{
-				x = buttonRect.x + buttonRect.width + 1,
-				y = buttonRect.y,
-				width = sampleBoxSize,
-				height = 24
-			};
-			Widgets.TextFieldNumericLabeled(sampleBoxRect, "ProfileSampleSize".Translate(), ref sampleSize, ref sampleBuffer, max: 3000);
 		}
 
 		private void DoFieldsArea(Rect rect)
@@ -209,12 +201,21 @@ namespace XmlPatchHelper
 			Rect fieldRect = rect;
 			float dropdownHeight = 24;
 			fieldRect.height = dropdownHeight;
+
+			float sampleBoxSize = (Text.CalcSize("ProfileSampleSize".Translate()).x + 2) * 2;
+			Rect sampleBoxRect = new Rect(fieldRect)
+			{
+				width = sampleBoxSize
+			};
+			Widgets.TextFieldNumericLabeled(sampleBoxRect, "ProfileSampleSize".Translate(), ref sampleSize, ref sampleBuffer, max: 3000);
+			fieldRect.y += sampleBoxRect.height + 2;
+			fieldRect.width = rect.width;
 			Widgets.Label(fieldRect, "PatchOperationType".Translate());
 			fieldRect.x += Text.CalcSize("PatchOperationType".Translate()).x + 5;
 			fieldRect.width = rect.width / 2;
 			Widgets.Dropdown(fieldRect, patchType, (Type type) => type, PatchTypeSelection_GenerateMenu, patchType.Name);
 			fieldRect = rect;
-			fieldRect.y += dropdownHeight + 2;
+			fieldRect.y += (dropdownHeight + 2) * 2;
 
 			if (patchType != null && patchOperation != null)
 			{
@@ -238,11 +239,63 @@ namespace XmlPatchHelper
 				}
 				//Widgets.EndScrollView();
 			}
+
+			fieldRect.x += rect.width - Dialog_ColorPicker.ButtonWidth * 2;
+			fieldRect.y = rect.height - 24;
+			fieldRect.height = 24;
+			fieldRect.width = Dialog_ColorPicker.ButtonWidth * 2;
+			if (Widgets.ButtonText(fieldRect, "ExportPatchXml".Translate()))
+			{
+				try
+				{
+					document.SelectSingleNode(xpath);
+				}
+				catch (XPathException)
+				{
+					Log.Error($"Unable to export PatchOperation file. XPath is invalid.");
+				}
+				string filePath = Path.Combine(Application.persistentDataPath, "XmlPatchHelper_PatchOperation.xml");
+				try
+				{
+					XmlNodeList nodeList = document.SelectNodes(xpath);
+					XmlDocument exportDoc = new XmlDocument();
+					exportDoc.AppendChild(exportDoc.CreateElement("Patch"));
+					XmlElement operationElement = exportDoc.CreateElement("Operation");
+					string patchOperationTypeValue = patchType.Namespace == "Verse" ? patchType.Name : $"{patchType.Namespace}.{patchType.Name}";
+					operationElement.SetAttribute("Class", patchType.Name);
+
+					foreach (FieldInfo field in patchTypes[patchType])
+					{
+						object value = field.GetValue(patchOperation);
+						bool enumDefault = field.FieldType.IsEnum && (int)field.FieldType.DefaultValue() == 0;
+						if (value != field.FieldType.DefaultValue() && !enumDefault)
+						{
+							XmlElement fieldElement = exportDoc.CreateElement(field.Name);
+							if (value is XmlContainer container)
+							{
+								fieldElement.AppendChild(exportDoc.ImportNode(container.node.FirstChild, true));
+							}
+							else
+							{
+								fieldElement.InnerText = value.ToStringSafe();
+							}
+							operationElement.AppendChild(exportDoc.ImportNode(fieldElement, true));
+						}
+					}
+					exportDoc.DocumentElement.AppendChild(operationElement);
+					exportDoc.Save(filePath);
+					Application.OpenURL(filePath);
+				}
+				catch (Exception ex)
+				{
+					Log.Error($"Unable to export PatchOperation to {filePath} Exception = {ex}");
+				}
+			}
 		}
 
 		private void ShowPatchResults()
 		{
-			//XmlDocument compareDoc = 
+			Find.WindowStack.Add(new Dialog_BeforeAfterPatch());
 		}
 
 		/// <summary>
@@ -355,7 +408,17 @@ namespace XmlPatchHelper
 			return 0;
 		}
 
-		private static void BuildXmlSummary(XmlNodeList nodeList, StringBuilder summary, int maxNodeCount = 50)
+		public static void BuildXmlSummary(XmlNodeList nodeList, StringBuilder summary, int maxNodeCount = 50)
+		{
+			List<XmlNode> listNodeList = new List<XmlNode>();
+			foreach (XmlNode node in nodeList)
+			{
+				listNodeList.Add(node);
+			}
+			BuildXmlSummary(listNodeList, summary, maxNodeCount);
+		}
+
+		public static void BuildXmlSummary(List<XmlNode> nodeList, StringBuilder summary, int maxNodeCount = 50)
 		{
 			int i = 0;
 			bool truncate = nodeList.Count > 1 || (nodeList.Count == 1 && (nodeList[0].ChildNodes.Count > maxNodeCount || nodeList[0].Name == "#document"));
@@ -574,15 +637,15 @@ namespace XmlPatchHelper
 					Find.WindowStack.Add(new Dialog_AddNode(container, delegate (string node, string text, List<(string name, string value)> attributes)
 					{
 						XmlDocument doc = new XmlDocument();
+						XmlElement element = doc.CreateElement("value");
 
 						if (node.NullOrEmpty())
 						{
-							container.node = doc.CreateNode(XmlNodeType.Text, string.Empty, string.Empty);
-							container.node.InnerText = text;
+							element.InnerText = text;
 						}
 						else
 						{
-							XmlElement element = doc.CreateElement(node);
+							XmlElement innerElement = doc.CreateElement(node);
 							if (!attributes.NullOrEmpty())
 							{
 								foreach ((string name, string value) in attributes)
@@ -590,9 +653,10 @@ namespace XmlPatchHelper
 									element.SetAttribute(name, value);
 								}
 							}
-							element.InnerText = text;
-							container.node = element;
+							innerElement.InnerText = text;
+							element.AppendChild(innerElement);
 						}
+						container.node = element;
 						onValueChange?.Invoke(value);
 					}));
 				}
@@ -601,41 +665,17 @@ namespace XmlPatchHelper
 
 				float summaryHeight = 0;
 				float summaryY = inputRect.y;
-				if (container.node.IsEmpty())
+				if (container.node.IsEmpty() || container.node.FirstChild.IsEmpty())
 				{
 					summaryHeight += inputRect.height;
 					TextArea(inputRect, XmlText.OpenSelfClosingBracket(label));
 				}
-				else if (container.node.IsTextOnly())
-				{
-					summaryHeight += inputRect.height;
-					string summary = containerSummaries[field].ToString().TrimEndNewlines();
-					TextArea(inputRect, $"{XmlText.OpenBracket(label)}{summary}{XmlText.CloseBracket(label)}");
-				}
 				else
 				{
-					string valueOpen = XmlText.OpenBracket(label);
-					string valueClose = XmlText.CloseBracket(label);
-
+					summaryHeight += inputRect.height;
 					string summary = containerSummaries[field].ToString().TrimEndNewlines();
-
-					float originalX = inputRect.x;
-					float tabWidth = Text.CalcSize("\t").x;
-					summaryHeight += inputRect.height;
-					TextArea(inputRect, valueOpen);
 					inputRect.height = Text.CalcHeight(summary, inputRect.width);
-					inputRect.y += Text.CalcHeight(valueOpen, inputRect.width);
-					inputRect.x = rect.x + tabWidth;
-					summaryHeight += inputRect.height;
 					TextArea(inputRect, summary);
-					inputRect.height = 24;
-					inputRect.y += Text.CalcHeight(summary, inputRect.width);
-					inputRect.x = originalX;
-					summaryHeight += inputRect.height;
-					TextArea(inputRect, valueClose);
-
-					inputRect.height = summaryHeight;
-					inputRect.y = summaryY;
 				}
 
 				value = container;

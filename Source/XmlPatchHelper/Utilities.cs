@@ -9,6 +9,15 @@ namespace XmlPatchHelper
 {
 	public static class Utilities
 	{
+		public static object DefaultValue(this Type type)
+		{
+			if (type.IsValueType)
+			{
+				return Activator.CreateInstance(type);
+			}
+			return null;
+		}
+
 		public static void Fill<T>(this T[] array, T value)
 		{
 			for (int i = 0; i <array.Length; i++)
