@@ -18,6 +18,6 @@
 	</modDependencies>
 	<description>&lt;b&gt;&lt;color=orange&gt;Xml Patch Helper&lt;/color&gt;&lt;/b&gt;
 
-This tool allows you to validate or generate XPath based PatchOperations in-game.
+This tool allows you to validate or generate XPath based PatchOperations in-game so you can see exactly what your PatchOperation looks like and what the result would be.
 </description>
 </ModMetaData>

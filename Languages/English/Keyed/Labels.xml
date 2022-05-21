@@ -32,7 +32,7 @@
 	<ProfileAttemptingSampleSize>Profiling with {0} iterations.</ProfileAttemptingSampleSize>
 	<ProfileExitOperationTooLong>Exiting operation after {0} iterations. Average is too large for sample size and may cause the application to hang.</ProfileExitOperationTooLong>
 	
-	<ProfileMatchResults>Matched Nodes: {0}.</ProfileMatchResults>
+	<ProfileMatchResults>Matched Nodes: {0}</ProfileMatchResults>
 	<ProfileAverageResults>Average: {0} ticks ({1}ms)</ProfileAverageResults>
 	<ProfileTickDisclaimer>Disclaimer: This is measuring timer ticks (not RimWorld ticks)</ProfileTickDisclaimer>
 </LanguageData>

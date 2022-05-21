@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Manifest>
     <identifier>smashphil.xmlpatchhelper.rimworld</identifier>
-    <version>1.3.0000</version>
+    <version>1.3.8175</version>
     <dependencies/>
     <loadAfter>
 		<li>brrainz.harmony</li>
 	</loadAfter>
     <showCrossPromotions>true</showCrossPromotions>
-    <manifestUri>https://raw.githubusercontent.com/smashphil/vehicles/master/About/Manifest.xml</manifestUri>
-    <downloadUri>https://github.com/SmashPhil/Vehicles/releases/latest</downloadUri>
+    <manifestUri>https://raw.githubusercontent.com/smashphil/xmlpatchhelper/master/About/Manifest.xml</manifestUri>
+    <downloadUri>https://github.com/SmashPhil/xmlpatchhelper/releases/latest</downloadUri>
 </Manifest>
