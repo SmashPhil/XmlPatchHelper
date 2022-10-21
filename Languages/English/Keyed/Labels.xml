@@ -5,6 +5,7 @@
 	<XmlAttributeValue>Value</XmlAttributeValue>
 	<XmlInnerText>InnerText</XmlInnerText>
 	
+	<XmlPatchHelper_OpenPatcher>Open Patcher</XmlPatchHelper_OpenPatcher>
 	<XmlPatchHelper>Xml Patch Helper</XmlPatchHelper>
 	<FetchingXmlDefs>Fetching Xml</FetchingXmlDefs>
 	<RunXPath>Run XPath Search</RunXPath>
@@ -21,11 +22,13 @@
 	
 	<InvalidXmlException>Invalid xml. Exception caught</InvalidXmlException>
 	<InvalidXPathException>Invalid xpath. Exception caught</InvalidXPathException>
-	<SummaryStarterSuggestion>/Defs/ is much slower than Defs/ since it starts by selecting the entire document before selecting the document element (Defs), which is unnecessary.{0}Stop using it.</SummaryStarterSuggestion>
+	<SummaryStarterSuggestion>It's recommended you use Defs/ instead of /Defs/ as the latter is slightly slower.</SummaryStarterSuggestion>
 	<SummaryExecutionTime>Execution time: {0} ticks ({1}ms)</SummaryExecutionTime>
 	<SummaryMatchCount>Summary: Found {0} results.</SummaryMatchCount>
 	<SummaryMatchCountWithDisclaimer>Summary: Found {0} results. (Only showing first 5 matches)</SummaryMatchCountWithDisclaimer>
 	<CloseSearchSuggestion>Your search was close. Did you mean one of the following?</CloseSearchSuggestion>
+	<XmlPatchBefore>Before</XmlPatchBefore>
+	<XmlPatchAfter>After</XmlPatchAfter>
 	
 	<ProfileSampleSize>Profiling Sample Size </ProfileSampleSize>
 	<ProfileMatchHeader>Matching {0}</ProfileMatchHeader>

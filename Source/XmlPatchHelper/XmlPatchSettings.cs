@@ -60,6 +60,18 @@ namespace XmlPatchHelper
 		{
 			base.DoSettingsWindowContents(inRect);
 
+			Rect buttonRect = new Rect(inRect)
+			{
+				width = inRect.width / 4,
+				height = 30
+			};
+			if (Widgets.ButtonText(buttonRect, "XmlPatchHelper_OpenPatcher".Translate()))
+			{
+				Find.WindowStack.currentlyDrawnWindow.Close();
+				Find.WindowStack.Add(new XmlPatchConsole());
+				return;
+			}
+
 			var richText = Text.CurFontStyle.richText;
 
 			Color nodeColor = settings.nodeColor;
@@ -73,6 +85,7 @@ namespace XmlPatchHelper
 			float textHeight = Text.CalcHeight("Test", inRect.width);
 
 			Rect colorRect = new Rect(inRect);
+			colorRect.y += buttonRect.height + 12;
 			colorRect.height = textHeight * 2 + 2;
 			float totalWidth = Text.CalcSize(Open(Color.white) + Name(Color.white) + Equals(Color.white) + Value(Color.white) + CloseOpen(Color.white) + InnerText(Color.white) + Close(Color.white)).x;
 			colorRect.width = totalWidth + 10;

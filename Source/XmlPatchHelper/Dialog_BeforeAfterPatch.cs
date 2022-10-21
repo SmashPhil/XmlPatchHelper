@@ -48,7 +48,7 @@ namespace XmlPatchHelper
 			after = afterStringBuilder.ToString();
 		}
 
-		public override Vector2 InitialSize => new Vector2(Mathf.Max(UI.screenWidth / 1.5f, 1200), Mathf.Max(UI.screenHeight / 1.5f, 675));
+		public override Vector2 InitialSize => new Vector2(Mathf.Max(UI.screenWidth / 1.25f, 1200), Mathf.Max(UI.screenHeight / 1.25f, 675));
 
 		public override void Notify_ClickOutsideWindow()
 		{
@@ -76,6 +76,18 @@ namespace XmlPatchHelper
 
 		private void DrawBeforePatch(Rect rect)
 		{
+			Rect labelRect = rect;
+
+			var font = Text.Font;
+			Text.Font = GameFont.Medium;
+			string label = "XmlPatchBefore".Translate();
+			float labelHeight = Text.CalcHeight(label, labelRect.width);
+			labelRect.height = labelHeight;
+			Widgets.Label(labelRect, label);
+			Text.Font = font;
+
+			rect.y += labelRect.height;
+			rect.height -= labelRect.height;
 			Widgets.DrawMenuSection(rect);
 			rect = rect.ContractedBy(5);
 			XmlPatchConsole.TextAreaScrollable(rect, before, ref beforeScrollPosition);
@@ -83,6 +95,18 @@ namespace XmlPatchHelper
 
 		private void DrawAfterPatch(Rect rect)
 		{
+			Rect labelRect = rect;
+
+			var font = Text.Font;
+			Text.Font = GameFont.Medium;
+			string label = "XmlPatchAfter".Translate();
+			float labelHeight = Text.CalcHeight(label, labelRect.width);
+			labelRect.height = labelHeight;
+			Widgets.Label(labelRect, label);
+			Text.Font = font;
+
+			rect.y += labelRect.height;
+			rect.height -= labelRect.height;
 			Widgets.DrawMenuSection(rect);
 			rect = rect.ContractedBy(5);
 			XmlPatchConsole.TextAreaScrollable(rect, after, ref afterScrollPosition);

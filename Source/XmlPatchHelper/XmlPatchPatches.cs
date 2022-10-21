@@ -27,7 +27,7 @@ namespace XmlPatchHelper
 
 			Version version = Assembly.GetExecutingAssembly().GetName().Version;
 			CurrentVersion = $"{version.Major}.{version.Minor}.{version.Build}";
-			Log.Message($"{LogLabel} version {CurrentVersion}");
+			Log.Message($"<color=orange>{LogLabel}</color> version {CurrentVersion}");
 
 			XmlPatchConsole.ExcludeField(typeof(PatchOperation), nameof(PatchOperation.sourceFile));
 

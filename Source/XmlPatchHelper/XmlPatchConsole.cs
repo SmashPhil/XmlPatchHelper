@@ -53,12 +53,12 @@ namespace XmlPatchHelper
 
 		private static SimpleCurve cutoutSampleSizeCurve = new SimpleCurve(new List<CurvePoint>()
 		{
-			new CurvePoint(1, 10000),
-			new CurvePoint(10, 5000),
-			new CurvePoint(100, 500),
-			new CurvePoint(1000, 100),
-			new CurvePoint(2000, 10),
-			new CurvePoint(3000, 1)
+			new CurvePoint(1, 8000),
+			new CurvePoint(10, 3000),
+			new CurvePoint(100, 350),
+			new CurvePoint(750, 100),
+			new CurvePoint(1000, 10),
+			new CurvePoint(2000, 1)
 		});
 
 		public XmlPatchConsole()
@@ -141,7 +141,7 @@ namespace XmlPatchHelper
 			{
 				LongEventHandler.QueueLongEvent(delegate ()
 				{
-					ProfileSelect(sampleSize, cutoutSampleSizeCurve);
+					ProfileSelect(sampleSize);
 				}, "XPathProfiling", true, null);
 			}
 			buttonRect.x += buttonRect.width + 1;
@@ -267,7 +267,7 @@ namespace XmlPatchHelper
 					foreach (FieldInfo field in patchTypes[patchType])
 					{
 						object value = field.GetValue(patchOperation);
-						bool enumDefault = field.FieldType.IsEnum && (int)field.FieldType.DefaultValue() == 0;
+						bool enumDefault = field.FieldType.IsEnum && (int)value == (int)field.FieldType.DefaultValue();
 						if (value != field.FieldType.DefaultValue() && !enumDefault)
 						{
 							XmlElement fieldElement = exportDoc.CreateElement(field.Name);
@@ -326,35 +326,8 @@ namespace XmlPatchHelper
 
 				if (nodeList.Count == 0)
 				{
-					//Attempt auto-correct
-					try
-					{
-						string[] xpathTree = Regex.Split(xpath, @"(\/{1,2})");
-						string lastSelect = xpathTree.LastOrDefault();
-						if (predicateMatch.IsMatch(lastSelect))
-						{
-							string[] lastSelectPieceMeal = Regex.Split(lastSelect, @"(?=[\[])");
-							lastSelectPieceMeal[0] = "*"; //wild card match
-							xpathTree[xpathTree.Length - 1] = string.Join("", lastSelectPieceMeal);
-							string correctedXPath = string.Join("", xpathTree);
-							XmlNodeList correctionAttempt = document.SelectNodes(correctedXPath);
-							if (correctionAttempt.Count > 0)
-							{
-								summary.AppendLine();
-								summary.AppendLine("CloseSearchSuggestion".Translate());
-								foreach (XmlNode node in correctionAttempt)
-								{
-									lastSelectPieceMeal[0] = node.Name; //Substitute wildcard match
-									xpathTree[xpathTree.Length - 1] = string.Join("", lastSelectPieceMeal);
-									correctedXPath = string.Join("", xpathTree);
-									summary.AppendLine(correctedXPath.Colorize(ColorLibrary.Grey));
-								}
-							}
-						}
-					}
-					catch
-					{
-					}
+					AttemptDefTypeAutoCorrect();
+					AttemptDefNameToAttributeAutoCorrect(("defName", "@Name"), ("defName", "@ParentName"), ("@Name", "defName"), ("@ParentName", "defName"), ("ParentName", "@ParentName"), ("Name", "@Name"));
 				}
 			}
 			catch (XPathException)
@@ -365,7 +338,79 @@ namespace XmlPatchHelper
 			summary.AppendLine();
 		}
 
-		private double ProfileSelect(int sample, SimpleCurve sampleSizeForAverage)
+		private void AttemptDefTypeAutoCorrect()
+		{
+			try
+			{
+				string[] xpathTree = Regex.Split(xpath, @"(\/{1,2})");
+				string lastSelect = xpathTree.LastOrDefault();
+				if (predicateMatch.IsMatch(lastSelect))
+				{
+					string[] lastSelectPieceMeal = Regex.Split(lastSelect, @"(?=[\[])");
+					lastSelectPieceMeal[0] = "*"; //wild card match
+					xpathTree[xpathTree.Length - 1] = string.Join("", lastSelectPieceMeal);
+					string correctedXPath = string.Join("", xpathTree);
+					XmlNodeList correctionAttempt = document.SelectNodes(correctedXPath);
+					if (correctionAttempt.Count > 0)
+					{
+						summary.AppendLine();
+						summary.AppendLine("CloseSearchSuggestion".Translate());
+						foreach (XmlNode node in correctionAttempt)
+						{
+							lastSelectPieceMeal[0] = node.Name; //Substitute wildcard match
+							xpathTree[xpathTree.Length - 1] = string.Join("", lastSelectPieceMeal);
+							correctedXPath = string.Join("", xpathTree);
+							summary.AppendLine(correctedXPath.Colorize(ColorLibrary.Grey));
+						}
+					}
+				}
+			}
+			catch
+			{
+			}
+		}
+
+		private void AttemptDefNameToAttributeAutoCorrect(params (string name, string proposal)[] attempts)
+		{
+			try
+			{
+				if (!attempts.NullOrEmpty())
+				{
+					HashSet<string> suggestions = new HashSet<string>(); //Avoid duplicate suggestions
+					string xpathNoWhitespace = string.Concat(xpath.Where(c => !char.IsWhiteSpace(c)));
+					foreach ((string name, string proposal) in attempts)
+					{
+						if (xpathNoWhitespace.Contains($"[{name}="))
+						{
+							string correctedXPath = xpath.Replace(name, proposal);
+							XmlNodeList correctionAttempt = document.SelectNodes(correctedXPath);
+							if (correctionAttempt.Count > 0)
+							{
+								foreach (XmlNode node in correctionAttempt)
+								{
+									suggestions.Add(correctedXPath.Colorize(ColorLibrary.Grey));
+								}
+							}
+						}
+					}
+
+					if (suggestions.Count > 0)
+					{
+						summary.AppendLine();
+						summary.AppendLine("CloseSearchSuggestion".Translate());
+						foreach (string suggestion in suggestions)
+						{
+							summary.AppendLine(suggestion);
+						}
+					}
+				}
+			}
+			catch
+			{
+			}
+		}
+
+		private double ProfileSelect(int sample)
 		{
 			summary.Clear();
 			try
