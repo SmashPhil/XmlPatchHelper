@@ -314,21 +314,26 @@ namespace XmlPatchHelper
 				
 				summary.PrependLine();
 
+				StringBuilder prependedText = new StringBuilder();
+				string summaryText = nodeList.Count >= 5 ? "SummaryMatchCountWithDisclaimer".Translate(nodeList.Count) : "SummaryMatchCount".Translate(nodeList.Count);
+				prependedText.AppendLine(XmlText.Comment(summaryText));
+				prependedText.AppendLine(XmlText.Comment("SummaryExecutionTime".Translate(string.Format("{0:0.##}", stopwatch.ElapsedTicks), string.Format("{0:0.##}", stopwatch.ElapsedMilliseconds))));
+
 				if (xpath.StartsWith("/Defs"))
 				{
-					summary.PrependLine("SummaryStarterSuggestion".Translate(Environment.NewLine).Colorize(Color.yellow));
-					summary.PrependLine();
+					prependedText.AppendLine("SummaryStarterSuggestion".Translate(Environment.NewLine).Colorize(Color.yellow));
+					prependedText.AppendLine();
 				}
 
-				summary.PrependLine(XmlText.Comment("SummaryExecutionTime".Translate(string.Format("{0:0.##}", stopwatch.ElapsedTicks), string.Format("{0:0.##}", stopwatch.ElapsedMilliseconds))));
-				string summaryText = nodeList.Count >= 5 ? "SummaryMatchCountWithDisclaimer".Translate(nodeList.Count) : "SummaryMatchCount".Translate(nodeList.Count);
-				summary.PrependLine(XmlText.Comment(summaryText));
-
+				AttemptBackTraversalCorrect(prependedText);
 				if (nodeList.Count == 0)
 				{
-					AttemptDefTypeAutoCorrect();
-					AttemptDefNameToAttributeAutoCorrect(("defName", "@Name"), ("defName", "@ParentName"), ("@Name", "defName"), ("@ParentName", "defName"), ("ParentName", "@ParentName"), ("Name", "@Name"));
+					AttemptDefTypeAutoCorrect(prependedText);
+					AttemptDefNameToAttributeAutoCorrect(prependedText, ("defName", "@Name"), ("defName", "@ParentName"), ("@Name", "defName"), ("@ParentName", "defName"), ("ParentName", "@ParentName"), ("Name", "@Name"));
+					AttemptDefNameCloseMatch(prependedText);
 				}
+
+				summary.PrependLine(prependedText.ToString());
 			}
 			catch (XPathException)
 			{
@@ -338,7 +343,7 @@ namespace XmlPatchHelper
 			summary.AppendLine();
 		}
 
-		private void AttemptDefTypeAutoCorrect()
+		private static void AttemptDefTypeAutoCorrect(StringBuilder stringBuilder)
 		{
 			try
 			{
@@ -353,24 +358,25 @@ namespace XmlPatchHelper
 					XmlNodeList correctionAttempt = document.SelectNodes(correctedXPath);
 					if (correctionAttempt.Count > 0)
 					{
-						summary.AppendLine();
-						summary.AppendLine("CloseSearchSuggestion".Translate());
+						stringBuilder.AppendLine();
+						stringBuilder.AppendLine("CloseSearchSuggestion".Translate());
 						foreach (XmlNode node in correctionAttempt)
 						{
 							lastSelectPieceMeal[0] = node.Name; //Substitute wildcard match
 							xpathTree[xpathTree.Length - 1] = string.Join("", lastSelectPieceMeal);
 							correctedXPath = string.Join("", xpathTree);
-							summary.AppendLine(correctedXPath.Colorize(ColorLibrary.Grey));
+							stringBuilder.AppendLine(correctedXPath.Colorize(ColorLibrary.Grey));
 						}
 					}
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
+				//stringBuilder.AppendLine($"Exception {ex}");
 			}
 		}
 
-		private void AttemptDefNameToAttributeAutoCorrect(params (string name, string proposal)[] attempts)
+		private void AttemptDefNameToAttributeAutoCorrect(StringBuilder stringBuilder, params (string name, string proposal)[] attempts)
 		{
 			try
 			{
@@ -396,17 +402,107 @@ namespace XmlPatchHelper
 
 					if (suggestions.Count > 0)
 					{
-						summary.AppendLine();
-						summary.AppendLine("CloseSearchSuggestion".Translate());
+						stringBuilder.AppendLine();
+						stringBuilder.AppendLine("CloseSearchSuggestion".Translate());
 						foreach (string suggestion in suggestions)
 						{
-							summary.AppendLine(suggestion);
+							stringBuilder.AppendLine(suggestion);
 						}
 					}
 				}
 			}
-			catch
+			catch (Exception ex)
 			{
+				//stringBuilder.AppendLine($"Exception {ex}");
+			}
+		}
+
+		private void AttemptDefNameCloseMatch(StringBuilder stringBuilder)
+		{
+			try
+			{
+				HashSet<string> suggestions = new HashSet<string>(); //Avoid duplicate suggestions
+				string regex = @"[a-zA-Z0-9_]+\=\""[a-zA-Z0-9_]+\""";
+				string xpathNoWhitespace = string.Concat(xpath.Where(c => !char.IsWhiteSpace(c)));
+				string[] xpathNoPredicates = Regex.Split(xpathNoWhitespace, $@"\[{regex}\]");
+				if (xpathNoPredicates.Length == 2)
+				{
+					Match match = Regex.Match(xpathNoWhitespace, regex);
+					string xpathCheckForCloseMatches = $"{xpathNoPredicates[0]}[contains({match.Value.Replace("=", ",")})]"; //.Remove(0, 1).Replace("=", ",").Remove(predicates.Length - 1, 1)
+					XmlNodeList correctionAttempt = document.SelectNodes(xpathCheckForCloseMatches);
+					if (correctionAttempt.Count > 0)
+					{
+						stringBuilder.AppendLine();
+						stringBuilder.AppendLine("CloseSearchSuggestion".Translate());
+						for (int i = 0; i < correctionAttempt.Count; i++)
+						{
+							string nodeName = match.Value.Split('=').FirstOrDefault();
+							XmlNode correctNode = correctionAttempt[i][nodeName];
+							if (correctNode != null)
+							{
+								string correctedXPath = $"{xpathNoPredicates[0]}[{Regex.Replace(match.Value, @$"\""[a-zA-Z0-9_]+\""", $"\"{correctNode.InnerText}\"")}]"; //TODO - Input value for correction
+								suggestions.Add(correctedXPath.Colorize(ColorLibrary.Grey));
+							}
+						}
+
+						foreach (string suggestion in suggestions)
+						{
+							stringBuilder.AppendLine(suggestion);
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				//stringBuilder.AppendLine($"Exception {ex}");
+			}
+		}
+
+		private void AttemptBackTraversalCorrect(StringBuilder stringBuilder)
+		{
+			try
+			{
+				MatchCollection matches = Regex.Matches(xpath, @"(\/\.\.)|(\/parent::node\(\))");
+				if (matches.Count > 0)
+				{
+					string[] xpathTree = Regex.Split(xpath, @"(\/{1,2})");
+					int indexLastParentSelector = Mathf.Max(Array.LastIndexOf(xpathTree, ".."), Array.LastIndexOf(xpathTree, "parent::node()"));
+					string xpathCorrected = "";
+					int length = xpathTree.Length - matches.Count * 2;
+					int replacementIndex = indexLastParentSelector + 1 - matches.Count * 4;
+					for (int i = 0; i < xpathTree.Length; i++)
+					{
+						string curSelection = xpathTree[i];
+						if (Regex.IsMatch(curSelection, @"(\/{1,2})") && Regex.IsMatch(xpathTree[i + 1], @"(\.\.)|(\/parent::node\(\))"))
+						{
+							i += 1; //skip parent selectors in corrected xpath
+							if (i == indexLastParentSelector)
+							{
+								xpathCorrected += "]"; //close predicate suggestion
+							}
+						}
+						else
+						{
+							if (i == replacementIndex)
+							{
+								curSelection = "[";
+							}
+							xpathCorrected += curSelection;
+						}
+					}
+					string correctedXPath = string.Join("", xpathTree);
+					XmlNodeList correctionAttempt = document.SelectNodes(correctedXPath);
+					if (correctionAttempt.Count > 0)
+					{
+						stringBuilder.AppendLine();
+						stringBuilder.AppendLine("UpTreeTraversalSuggestion".Translate().Colorize(ColorLibrary.RedReadable));
+						stringBuilder.AppendLine(xpathCorrected.Colorize(ColorLibrary.Grey));
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				//stringBuilder.AppendLine($"Exception {ex}");
 			}
 		}
 
@@ -604,6 +700,7 @@ namespace XmlPatchHelper
 				float rbrWidth = Text.CalcSize(rightBracket).x;
 				Widgets.LabelFit(inputRect, leftBracket);
 				inputRect.y += inputRect.height;
+				inputRect.height = Text.CalcHeight((string)value, inputRect.width);
 				string newValue = TextArea(inputRect, (string)value, true, null, TextAnchor.MiddleLeft);
 				if (newValue != (string)value)
 				{
@@ -611,6 +708,7 @@ namespace XmlPatchHelper
 					onValueChange?.Invoke(value);
 				}
 				inputRect.y += inputRect.height;
+				inputRect.height = 24;
 				Widgets.LabelFit(inputRect, rightBracket);
 			}
 			else if (field.FieldType == typeof(int) || field.FieldType == typeof(float))

@@ -26,7 +26,11 @@
 	<SummaryExecutionTime>Execution time: {0} ticks ({1}ms)</SummaryExecutionTime>
 	<SummaryMatchCount>Summary: Found {0} results.</SummaryMatchCount>
 	<SummaryMatchCountWithDisclaimer>Summary: Found {0} results. (Only showing first 5 matches)</SummaryMatchCountWithDisclaimer>
+	
 	<CloseSearchSuggestion>Your search was close. Did you mean one of the following?</CloseSearchSuggestion>
+	<UpTreeTraversalSuggestion>You should never use parent selectors, they are extremely slow and can be easily replaced with predicates.
+Here is a suggestion:</UpTreeTraversalSuggestion>
+
 	<XmlPatchBefore>Before</XmlPatchBefore>
 	<XmlPatchAfter>After</XmlPatchAfter>
 	

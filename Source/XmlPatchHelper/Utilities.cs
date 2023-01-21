@@ -2,6 +2,7 @@
 using System.Text;
 using System.Linq;
 using System.Xml;
+using System.Collections.Generic;
 using Verse;
 using UnityEngine;
 
@@ -9,6 +10,27 @@ namespace XmlPatchHelper
 {
 	public static class Utilities
 	{
+		public static List<XmlNode> ToList(this XmlNodeList nodeList)
+		{
+			List<XmlNode> list = new List<XmlNode>();
+			foreach (XmlNode node in nodeList)
+			{
+				list.Add(node);
+			}
+			return list;
+		}
+
+		public static IEnumerable<XmlNode> Where(this XmlNodeList nodeList, Predicate<XmlNode> predicate)
+		{
+			foreach (XmlNode node in nodeList)
+			{
+				if (predicate(node))
+				{
+					yield return node;
+				}
+			}
+		}
+
 		public static object DefaultValue(this Type type)
 		{
 			if (type.IsValueType)
