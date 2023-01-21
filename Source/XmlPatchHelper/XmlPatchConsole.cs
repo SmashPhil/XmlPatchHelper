@@ -428,7 +428,7 @@ namespace XmlPatchHelper
 				if (xpathNoPredicates.Length == 2)
 				{
 					Match match = Regex.Match(xpathNoWhitespace, regex);
-					string xpathCheckForCloseMatches = $"{xpathNoPredicates[0]}[contains({match.Value.Replace("=", ",")})]"; //.Remove(0, 1).Replace("=", ",").Remove(predicates.Length - 1, 1)
+					string xpathCheckForCloseMatches = $"{xpathNoPredicates[0]}[contains({match.Value.Replace("=", ",")})]";
 					XmlNodeList correctionAttempt = document.SelectNodes(xpathCheckForCloseMatches);
 					if (correctionAttempt.Count > 0)
 					{
@@ -440,7 +440,7 @@ namespace XmlPatchHelper
 							XmlNode correctNode = correctionAttempt[i][nodeName];
 							if (correctNode != null)
 							{
-								string correctedXPath = $"{xpathNoPredicates[0]}[{Regex.Replace(match.Value, @$"\""[a-zA-Z0-9_]+\""", $"\"{correctNode.InnerText}\"")}]"; //TODO - Input value for correction
+								string correctedXPath = $"{xpathNoPredicates[0]}[{Regex.Replace(match.Value, @$"\""[a-zA-Z0-9_]+\""", $"\"{correctNode.InnerText}\"")}]";
 								suggestions.Add(correctedXPath.Colorize(ColorLibrary.Grey));
 							}
 						}
