@@ -15,7 +15,7 @@ namespace XmlPatchHelper
 	{
 		public const string LogLabel = "[XmlPatchHelper]";
 
-		internal static Texture2D XPathHelperIcon = ContentFinder<Texture2D>.Get("XmlPatchHelperMenuIcon");
+		internal static Texture2D MenuIcon = ContentFinder<Texture2D>.Get("XmlPatchHelper_MenuIcon");
 
 		internal static string CurrentVersion { get; private set; }
 
@@ -36,14 +36,14 @@ namespace XmlPatchHelper
 				nameof(InsertXmlPatcherButton)));
 		}
 
-		public static void InsertXmlPatcherButton(Rect rect, ref List<ListableOption> optList)
+		public static void InsertXmlPatcherButton(ref List<ListableOption> optList)
 		{
-			if (optList.FirstOrDefault(opt => opt.label == "BuySoundtrack".Translate()) != null)
+			if (optList.Any(opt => opt is ListableOption_WebLink))
 			{
-				optList.Add(new ListableOption_WebLinkResized("XmlPatchHelper".Translate(), delegate ()
+				optList.Add(new ListableOption_WebLink("XmlPatchHelper".Translate(), delegate ()
 				{
 					Find.WindowStack.Add(new XmlPatchConsole());
-				}, XPathHelperIcon));
+				}, MenuIcon));
 			}
 		}
 	}
