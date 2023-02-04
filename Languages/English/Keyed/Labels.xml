@@ -7,6 +7,7 @@
 	
 	<XmlPatchHelper_OpenPatcher>Open Patcher</XmlPatchHelper_OpenPatcher>
 	<XmlPatchHelper>Xml Patch Helper</XmlPatchHelper>
+	<XmlPatchHelper_MaxResults>Max Results</XmlPatchHelper_MaxResults>
 	<FetchingXmlDefs>Fetching Xml</FetchingXmlDefs>
 	<RunXPath>Run XPath Search</RunXPath>
 	<XPathProfile>Profile XPath</XPathProfile>
@@ -25,7 +26,7 @@
 	<SummaryStarterSuggestion>It's recommended you use Defs/ instead of /Defs/ as the latter is slightly slower.</SummaryStarterSuggestion>
 	<SummaryExecutionTime>Execution time: {0} ticks ({1}ms)</SummaryExecutionTime>
 	<SummaryMatchCount>Summary: Found {0} results.</SummaryMatchCount>
-	<SummaryMatchCountWithDisclaimer>Summary: Found {0} results. (Only showing first 5 matches)</SummaryMatchCountWithDisclaimer>
+	<SummaryMatchCountWithDisclaimer>Summary: Found {0} results. (Only showing first {1} matches)</SummaryMatchCountWithDisclaimer>
 	
 	<CloseSearchSuggestion>Your search was close. Did you mean one of the following?</CloseSearchSuggestion>
 	<UpTreeTraversalSuggestion>You should never use parent selectors, they are extremely slow and can be easily replaced with predicates.

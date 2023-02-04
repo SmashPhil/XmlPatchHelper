@@ -22,6 +22,8 @@ namespace XmlPatchHelper
 		public Color textColor = White;
 		public Color commentColor = Comment;
 
+		public int resultsLimit = 5;
+
 		public override void ExposeData()
 		{
 			Scribe_Values.Look(ref nodeColor, nameof(nodeColor), LightBlue, true);
@@ -29,6 +31,8 @@ namespace XmlPatchHelper
 			Scribe_Values.Look(ref attributeValueColor, nameof(attributeValueColor), Pink, true);
 			Scribe_Values.Look(ref textColor, nameof(textColor), White, true);
 			Scribe_Values.Look(ref commentColor, nameof(commentColor), Comment, true);
+
+			Scribe_Values.Look(ref resultsLimit, nameof(resultsLimit), defaultValue: 5);
 		}
 	}
 
@@ -110,6 +114,13 @@ namespace XmlPatchHelper
 			{
 				highlightedSection = XmlSection.None;
 			}
+
+			Rect entryRect = new Rect (buttonRect);
+			entryRect.y = colorRect.yMax + textHeight * 1.25f; //25% line height buffer
+			Widgets.Label(entryRect, "XmlPatchHelper_MaxResults".Translate());
+			string buffer = settings.resultsLimit.ToString();
+			entryRect.y += entryRect.height;
+			Widgets.IntEntry(entryRect, ref settings.resultsLimit, ref buffer);
 		}
 
 		private static void DrawColoredText(ref Rect rect, Func<Color, string> text, Color color, Color originalColor, XmlSection section, Action<Color> setColor, bool editable = true)

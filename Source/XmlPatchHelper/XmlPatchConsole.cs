@@ -315,7 +315,7 @@ namespace XmlPatchHelper
 				summary.PrependLine();
 
 				StringBuilder prependedText = new StringBuilder();
-				string summaryText = nodeList.Count >= 5 ? "SummaryMatchCountWithDisclaimer".Translate(nodeList.Count) : "SummaryMatchCount".Translate(nodeList.Count);
+				string summaryText = nodeList.Count >= XmlPatchMod.settings.resultsLimit ? "SummaryMatchCountWithDisclaimer".Translate(nodeList.Count, XmlPatchMod.settings.resultsLimit) : "SummaryMatchCount".Translate(nodeList.Count);
 				prependedText.AppendLine(XmlText.Comment(summaryText));
 				prependedText.AppendLine(XmlText.Comment("SummaryExecutionTime".Translate(string.Format("{0:0.##}", stopwatch.ElapsedTicks), string.Format("{0:0.##}", stopwatch.ElapsedMilliseconds))));
 
@@ -569,7 +569,7 @@ namespace XmlPatchHelper
 				tabs = 0;
 				nodesPerMatch = 0;
 				AppendXmlRecursive(node, truncate, summary);
-				if (i >= 5)
+				if (i >= XmlPatchMod.settings.resultsLimit)
 				{
 					break;
 				}
