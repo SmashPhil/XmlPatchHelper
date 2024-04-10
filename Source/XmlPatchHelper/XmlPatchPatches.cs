@@ -15,9 +15,11 @@ namespace XmlPatchHelper
 	{
 		public const string LogLabel = "[XmlPatchHelper]";
 
+		public const string PackageId = "smashphil.xmlpatchhelper";
+
 		internal static Texture2D MenuIcon = ContentFinder<Texture2D>.Get("XmlPatchHelper_MenuIcon");
 
-		internal static string CurrentVersion { get; private set; }
+		internal static ModMetaData MetaData { get; private set; }
 
 		internal static Harmony HarmonyInstance { get; private set; }
 
@@ -26,8 +28,9 @@ namespace XmlPatchHelper
 			HarmonyInstance = new Harmony("smashphil.xmlpatchhelper");
 
 			Version version = Assembly.GetExecutingAssembly().GetName().Version;
-			CurrentVersion = $"{version.Major}.{version.Minor}.{version.Build}";
-			Log.Message($"<color=orange>{LogLabel}</color> version {CurrentVersion}");
+			MetaData = ModLister.GetActiveModWithIdentifier(PackageId, ignorePostfix: true);
+
+			Log.Message($"<color=orange>{LogLabel}</color> version {MetaData.ModVersion}");
 
 			XmlPatchConsole.ExcludeField(typeof(PatchOperation), nameof(PatchOperation.sourceFile));
 
