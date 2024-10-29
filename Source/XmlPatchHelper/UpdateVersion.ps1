@@ -4,9 +4,13 @@
 # To execute this file from the command line (or a post-build event in VisualStudio) you'll want to include the following arguments
 # Powershell.exe -ExecutionPolicy Unrestricted -file {Path to your ps1 file} {majorVersion} {minorVersion} {startDate} {createVersionFile}
 # 
-# The path to your ps1 file will be relative to your project's solution file if you're executing it from a post-build event
+# NOTE: If you're executing it from a post-build event in VisualStudio, 
+# place the file in the same folder as your solution and use this command for the post-build event:
+# Powershell.exe -ExecutionPolicy Unrestricted -file "$(ProjectDir)\UpdateVersion.ps1"
+# 
+# Any further arguments should be placed after the file path
 #
-# Version is formatted as Major.Minor.Build.Revision
+# ARGUMENTS:
 # majorVersion: hard-coded major version in formatted version string (Default = 1)
 # minorVersion: hard-coded minor version in formatted version string (Default = 0)
 # buildDate: number of days since startDate
@@ -14,6 +18,8 @@
 # useRevision: Outputs Revision number as part of your version number, otherwise it will use Major.Minor.Build
 # versionFile: create Version.txt file in your Mod's local folder. Outputs without revision number for misc. use
 # 
+# EXAMPLE: Powershell.exe -ExecutionPolicy Unrestricted -file "$(ProjectDir)\UpdateVersion.ps1" 1 5 "01-JAN-2021" false true
+#
 
 ########## Definitions ##########
 
@@ -107,7 +113,7 @@ $versionFilePath = "$(Get-Location)\Version.txt"
 
 if ($createVersionFile){
     Write-Output "Outputting VersionWithRevision to Version.txt file at $($versionFilePath)"
-    $version | Out-File -FilePath $versionFilePath
+    $version.Trim() | Out-File -encoding ascii -NoNewline -FilePath $versionFilePath
 }
 
 [xml]$xml = Get-Content -path $aboutFilePath

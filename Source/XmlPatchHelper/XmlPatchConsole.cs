@@ -19,6 +19,7 @@ namespace XmlPatchHelper
     public class XmlPatchConsole : Window
     {
 		private const int MaxInnerTextLength = 25;
+		private const float TotalAllowedProfilingTime = 15f;
 
 		private const string XPathFieldName = "xpath";
 		private static Vector2 xmlScrollPosition;
@@ -41,7 +42,7 @@ namespace XmlPatchHelper
 		public static Type patchType;
 		public static PatchOperation patchOperation;
 
-		public static int sampleSize = 1000;
+		public static int sampleSize = 100;
 		public static string sampleBuffer = sampleSize.ToStringSafe();
 
 		public static string xpath;
@@ -50,16 +51,6 @@ namespace XmlPatchHelper
 		private static int tabs;
 
 		private static float fieldScrollableHeight;
-
-		private static SimpleCurve cutoutSampleSizeCurve = new SimpleCurve(new List<CurvePoint>()
-		{
-			new CurvePoint(1, 8000),
-			new CurvePoint(10, 3000),
-			new CurvePoint(100, 350),
-			new CurvePoint(750, 100),
-			new CurvePoint(1000, 10),
-			new CurvePoint(2000, 1)
-		});
 
 		public XmlPatchConsole()
 		{
@@ -523,16 +514,19 @@ namespace XmlPatchHelper
 					profileDocument.LoadXml(document.OuterXml);
 					stopwatch.Restart();
 					nodeList = profileDocument.SelectNodes(xpath);
+					_ = nodeList.Count;
 					stopwatch.Stop();
 					results.Add(stopwatch.ElapsedTicks);
 					ms.Add(stopwatch.ElapsedMilliseconds);
 					//Only check for exit point if given enough sample points to determine if operation is too slow
-					if (results.Average() >= cutoutSampleSizeCurve.Evaluate(i))
+					if (ms.Sum() > TotalAllowedProfilingTime * 1000)
 					{
 						summary.AppendLine("ProfileExitOperationTooLong".Translate(i));
 						break;
 					}
+					LongEventHandler.SetCurrentEventText($"{"XPathProfiling".Translate()} {i}/{sample}");
 				}
+
 				double average = results.Average();
 				double averageMS = ms.Average();
 				summary.AppendLine("ProfileMatchResults".Translate(nodeList.Count));
