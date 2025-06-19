@@ -288,6 +288,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>Powershell.exe -ExecutionPolicy Unrestricted -file "$(ProjectDir)\UpdateVersion.ps1" 1 5 "21-MAY-2022"</PostBuildEvent>
+    <PostBuildEvent>Powershell.exe -ExecutionPolicy Unrestricted -file "$(ProjectDir)\UpdateVersion.ps1" 1 6 "21-MAY-2022"</PostBuildEvent>
   </PropertyGroup>
 </Project>
